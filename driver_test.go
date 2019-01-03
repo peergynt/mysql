@@ -157,9 +157,20 @@ func runTests(t *testing.T, dsn string, tests ...func(dbt *DBTest)) {
 		defer db3.Close()
 	}
 
+	dsn4 := dsn + "&psMultiResults=true"
+	var db4 *sql.DB
+	if _, err := ParseDSN(dsn4); err != errInvalidDSNUnsafeCollation {
+		db4, err = sql.Open("mysql", dsn4)
+		if err != nil {
+			t.Fatalf("error connecting: %s", err.Error())
+		}
+		defer db4.Close()
+	}
+
 	dbt := &DBTest{t, db}
 	dbt2 := &DBTest{t, db2}
 	dbt3 := &DBTest{t, db3}
+	dbt4 := &DBTest{t, db4}
 	for _, test := range tests {
 		test(dbt)
 		dbt.db.Exec("DROP TABLE IF EXISTS test")
@@ -170,6 +181,10 @@ func runTests(t *testing.T, dsn string, tests ...func(dbt *DBTest)) {
 		if db3 != nil {
 			test(dbt3)
 			dbt3.db.Exec("DROP TABLE IF EXISTS test")
+		}
+		if db4 != nil {
+			test(dbt4)
+			dbt4.db.Exec("DROP TABLE IF EXISTS test")
 		}
 	}
 }
