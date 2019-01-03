@@ -124,6 +124,28 @@ func runTestsWithMultiStatement(t *testing.T, dsn string, tests ...func(dbt *DBT
 	}
 }
 
+func runTestsWithPSMultiResults(t *testing.T, dsn string, tests ...func(dbt *DBTest)) {
+	if !available {
+		t.Skipf("MySQL server not running on %s", netAddr)
+	}
+
+	dsn += "&psMultiResults=true"
+	var db *sql.DB
+	if _, err := ParseDSN(dsn); err != errInvalidDSNUnsafeCollation {
+		db, err = sql.Open("mysql", dsn)
+		if err != nil {
+			t.Fatalf("error connecting: %s", err.Error())
+		}
+		defer db.Close()
+	}
+
+	dbt := &DBTest{t, db}
+	for _, test := range tests {
+		test(dbt)
+		dbt.db.Exec("DROP TABLE IF EXISTS test")
+	}
+}
+
 func runTests(t *testing.T, dsn string, tests ...func(dbt *DBTest)) {
 	if !available {
 		t.Skipf("MySQL server not running on %s", netAddr)
@@ -3006,6 +3028,76 @@ func TestRawBytesAreNotModified(t *testing.T) {
 				}
 				rows.Close()
 			}()
+		}
+	})
+}
+
+func TestPSOutParams(t *testing.T) {
+	runTestsWithPSMultiResults(t, dsn, func(dbt *DBTest) {
+		dbt.mustExec("DROP TABLE IF EXISTS test")
+		dbt.mustExec("CREATE TABLE test (id INT NOT NULL ,data INT NOT NULL)")
+		dbt.mustExec("INSERT INTO test (id, data) VALUES (1, 1),(2, 2),(3, 3),(4, 4),(5, 5)")
+
+		dbt.mustExec("DROP PROCEDURE IF EXISTS test_ps_multi_results")
+		dbt.mustExec(`
+			CREATE PROCEDURE test_ps_multi_results(IN inval INT, OUT outval VARCHAR(50), INOUT inoutval INT)
+			BEGIN
+				SET inoutval = inval + inoutval;
+				SET outval = 'out string';
+				SELECT id, data FROM test;
+			END
+		`)
+		defer dbt.mustExec("DROP PROCEDURE test_ps_multi_results")
+
+		stmt, err := dbt.db.Prepare("CALL test_ps_multi_results(?, ?, ?)")
+		if err != nil {
+			dbt.Fatalf("failed to prepare statement: %s", err)
+		}
+		defer stmt.Close()
+
+		rows, err := stmt.Query(1, "", 2)
+		if err != nil {
+			dbt.Fatalf("failed to prepare statement: %s", err)
+		}
+
+		for rows.Next() {
+			var res [2]int
+			if err := rows.Scan(&res[0], &res[1]); err != nil {
+				dbt.Error(err)
+			} else if res[0] != res[1] {
+				dbt.Errorf("values are not the same")
+			}
+		}
+
+		if !rows.NextResultSet() {
+			dbt.Fatalf("expected prepared statement OUT result set")
+		}
+		if !rows.Next() {
+			dbt.Fatalf("failed to retrieve prepared statement OUT result set")
+		}
+
+		var outval string
+		var inoutval sql.NullInt64
+		if err := rows.Scan(&outval, &inoutval); err != nil {
+			dbt.Fatalf("failed to retrieve prepared statement OUT parameters")
+		}
+		if wanted := "out string"; outval != wanted {
+			dbt.Errorf("invalid OUT string: wanted '%s', got '%s'\n", wanted, outval)
+		}
+		if !inoutval.Valid {
+			dbt.Errorf("got invalid INOUT value")
+		}
+		if wanted := int64(3); inoutval.Int64 != wanted {
+			dbt.Errorf("invalid INOUT value: wanted '%d', got '%d'\n", wanted, inoutval.Int64)
+		}
+		if err := rows.Err(); err != nil {
+			dbt.Errorf("rows error: %s\n", err)
+		}
+		if err := rows.Close(); err != nil {
+			dbt.Errorf("failed to close rows: %s", err)
+		}
+		if err := stmt.Close(); err != nil {
+			dbt.Errorf("failed to close statement: %s", err)
 		}
 	})
 }
