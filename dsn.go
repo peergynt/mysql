@@ -59,6 +59,7 @@ type Config struct {
 	ColumnsWithAlias        bool // Prepend table alias to column names
 	InterpolateParams       bool // Interpolate placeholders into query string
 	MultiStatements         bool // Allow multiple statements in one query
+	PSMultiResults          bool // Allow multiple resultsets for a prepared statement
 	ParseTime               bool // Parse time values to time.Time
 	RejectReadOnly          bool // Reject read-only connections
 }
@@ -265,6 +266,15 @@ func (cfg *Config) FormatDSN() string {
 		} else {
 			hasParam = true
 			buf.WriteString("?multiStatements=true")
+		}
+	}
+
+	if cfg.PSMultiResults {
+		if hasParam {
+			buf.WriteString("&psMultiResults=true")
+		} else {
+			hasParam = true
+			buf.WriteString("?psMultiResults=true")
 		}
 	}
 
@@ -537,6 +547,14 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		case "multiStatements":
 			var isBool bool
 			cfg.MultiStatements, isBool = readBool(value)
+			if !isBool {
+				return errors.New("invalid bool value: " + value)
+			}
+
+		// multiple resultsets for a prepared statement
+		case "psMultiResults":
+			var isBool bool
+			cfg.PSMultiResults, isBool = readBool(value)
 			if !isBool {
 				return errors.New("invalid bool value: " + value)
 			}

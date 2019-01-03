@@ -300,6 +300,11 @@ func (mc *mysqlConn) writeHandshakeResponsePacket(authResp []byte, plugin string
 		clientFlags |= clientMultiStatements
 	}
 
+	// http://dev.mysql.com/doc/internals/en/out-parameter-set.html
+	if mc.cfg.PSMultiResults {
+		clientFlags |= clientPSMultiResults
+	}
+
 	// encode length of the auth plugin data
 	var authRespLEIBuf [9]byte
 	authRespLen := len(authResp)
