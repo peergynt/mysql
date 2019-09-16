@@ -3047,7 +3047,6 @@ func TestPSOutParams(t *testing.T) {
 				SELECT id, data FROM test;
 			END
 		`)
-		defer dbt.mustExec("DROP PROCEDURE test_ps_multi_results")
 
 		stmt, err := dbt.db.Prepare("CALL test_ps_multi_results(?, ?, ?)")
 		if err != nil {
@@ -3099,5 +3098,7 @@ func TestPSOutParams(t *testing.T) {
 		if err := stmt.Close(); err != nil {
 			dbt.Errorf("failed to close statement: %s", err)
 		}
+		dbt.mustExec("DROP PROCEDURE IF EXISTS test_ps_multi_results")
+		dbt.mustExec("DROP TABLE IF EXISTS test")
 	})
 }
