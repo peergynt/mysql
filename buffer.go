@@ -11,6 +11,7 @@ package mysql
 import (
 	"io"
 	"net"
+	"runtime/debug"
 	"time"
 )
 
@@ -133,6 +134,7 @@ func (b *buffer) readNext(need int) ([]byte, error) {
 // Only one buffer (total) can be used at a time.
 func (b *buffer) takeBuffer(length int) ([]byte, error) {
 	if b.length > 0 {
+		debug.PrintStack()
 		return nil, ErrBusyBuffer
 	}
 
@@ -155,6 +157,7 @@ func (b *buffer) takeBuffer(length int) ([]byte, error) {
 // Only one buffer (total) can be used at a time.
 func (b *buffer) takeSmallBuffer(length int) ([]byte, error) {
 	if b.length > 0 {
+		debug.PrintStack()
 		return nil, ErrBusyBuffer
 	}
 	return b.buf[:length], nil
@@ -166,6 +169,7 @@ func (b *buffer) takeSmallBuffer(length int) ([]byte, error) {
 // Only one buffer (total) can be used at a time.
 func (b *buffer) takeCompleteBuffer() ([]byte, error) {
 	if b.length > 0 {
+		debug.PrintStack()
 		return nil, ErrBusyBuffer
 	}
 	return b.buf, nil
@@ -174,6 +178,7 @@ func (b *buffer) takeCompleteBuffer() ([]byte, error) {
 // store stores buf, an updated buffer, if its suitable to do so.
 func (b *buffer) store(buf []byte) error {
 	if b.length > 0 {
+		debug.PrintStack()
 		return ErrBusyBuffer
 	} else if cap(buf) <= maxPacketSize && cap(buf) > cap(b.buf) {
 		b.buf = buf[:cap(buf)]
