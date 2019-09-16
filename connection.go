@@ -34,6 +34,7 @@ type mysqlConn struct {
 	sequence         uint8
 	parseTime        bool
 	reset            bool // set when the Go SQL package calls ResetSession
+	psOutParam       bool // set when result set has flag SERVER_PS_OUT_PARAMS
 
 	// for context support (Go 1.8+)
 	watching bool

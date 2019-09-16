@@ -626,6 +626,9 @@ func (mc *mysqlConn) handleOkPacket(data []byte) error {
 
 	// server_status [2 bytes]
 	mc.status = readStatus(data[1+n+m : 1+n+m+2])
+	if mc.status&statusPsOutParams != 0 {
+		mc.psOutParam = true
+	}
 	if mc.status&statusMoreResultsExists != 0 {
 		return nil
 	}
@@ -648,6 +651,12 @@ func (mc *mysqlConn) readColumns(count int) ([]mysqlField, error) {
 
 		// EOF Packet
 		if data[0] == iEOF && (len(data) == 5 || len(data) == 1) {
+			if len(data) == 5 {
+				mc.status = readStatus(data[3:])
+				if mc.status&statusPsOutParams != 0 {
+					mc.psOutParam = true
+				}
+			}
 			if i == count {
 				return columns, nil
 			}
@@ -818,6 +827,9 @@ func (mc *mysqlConn) readUntilEOF() error {
 		case iEOF:
 			if len(data) == 5 {
 				mc.status = readStatus(data[3:])
+				if mc.status&statusPsOutParams != 0 {
+					mc.psOutParam = true
+				}
 			}
 			return nil
 		}
@@ -1179,8 +1191,18 @@ func (rows *binaryRows) readRow(dest []driver.Value) error {
 		// EOF Packet
 		if data[0] == iEOF && len(data) == 5 {
 			rows.mc.status = readStatus(data[3:])
+			if rows.mc.status&statusPsOutParams != 0 {
+				rows.mc.psOutParam = true
+			}
 			rows.rs.done = true
-			if !rows.HasNextResultSet() {
+
+			next := rows.HasNextResultSet()
+			if rows.mc.psOutParam {
+				if err := rows.mc.readResultOK(); err != nil {
+					return err
+				}
+			}
+			if !next {
 				rows.mc = nil
 			}
 			return io.EOF
