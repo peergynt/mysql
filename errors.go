@@ -42,6 +42,7 @@ var errLog = Logger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshor
 // Logger is used to log critical error messages.
 type Logger interface {
 	Print(v ...interface{})
+	Printf(format string, v ...interface{})
 }
 
 // SetLogger is used to set the logger for critical errors.

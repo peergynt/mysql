@@ -43,6 +43,7 @@ func (mc *mysqlConn) readPacket() ([]byte, error) {
 
 		// check packet sync [8 bit]
 		if data[3] != mc.sequence {
+			errLog.Printf("invalid sequence number: wanted %d, got %d", mc.sequence, data[3])
 			if data[3] > mc.sequence {
 				return nil, ErrPktSyncMul
 			}
