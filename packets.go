@@ -425,6 +425,7 @@ func (mc *mysqlConn) writeAuthSwitchPacket(authData []byte) error {
 func (mc *mysqlConn) writeCommandPacket(command byte) error {
 	// Reset Packet Sequence
 	mc.sequence = 0
+	mc.psOutParam = false
 
 	data, err := mc.buf.takeSmallBuffer(4 + 1)
 	if err != nil {
@@ -443,6 +444,7 @@ func (mc *mysqlConn) writeCommandPacket(command byte) error {
 func (mc *mysqlConn) writeCommandPacketStr(command byte, arg string) error {
 	// Reset Packet Sequence
 	mc.sequence = 0
+	mc.psOutParam = false
 
 	pktLen := 1 + len(arg)
 	data, err := mc.buf.takeBuffer(pktLen + 4)
@@ -465,6 +467,7 @@ func (mc *mysqlConn) writeCommandPacketStr(command byte, arg string) error {
 func (mc *mysqlConn) writeCommandPacketUint32(command byte, arg uint32) error {
 	// Reset Packet Sequence
 	mc.sequence = 0
+	mc.psOutParam = false
 
 	data, err := mc.buf.takeSmallBuffer(4 + 1 + 4)
 	if err != nil {
@@ -892,6 +895,7 @@ func (stmt *mysqlStmt) writeCommandLongData(paramID int, arg []byte) error {
 		}
 
 		stmt.mc.sequence = 0
+		stmt.mc.psOutParam = false
 		// Add command byte [1 byte]
 		data[4] = comStmtSendLongData
 
@@ -917,6 +921,7 @@ func (stmt *mysqlStmt) writeCommandLongData(paramID int, arg []byte) error {
 
 	// Reset Packet Sequence
 	stmt.mc.sequence = 0
+	stmt.mc.psOutParam = false
 	return nil
 }
 
@@ -942,6 +947,7 @@ func (stmt *mysqlStmt) writeExecutePacket(args []driver.Value) error {
 
 	// Reset packet-sequence
 	mc.sequence = 0
+	mc.psOutParam = false
 
 	var data []byte
 	var err error
