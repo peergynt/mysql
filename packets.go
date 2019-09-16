@@ -1202,13 +1202,14 @@ func (rows *binaryRows) readRow(dest []driver.Value) error {
 			}
 			rows.rs.done = true
 
-			next := rows.HasNextResultSet()
-			if rows.mc.psOutParam {
-				if err := rows.mc.readResultOK(); err != nil {
-					return err
+			if !rows.HasNextResultSet() {
+				if rows.mc.psOutParam {
+					if err := rows.mc.readResultOK(); err != nil {
+						return err
+					}
+					rows.mc.sequence = 0
+					rows.mc.psOutParam = false
 				}
-			}
-			if !next {
 				rows.mc = nil
 			}
 			return io.EOF
