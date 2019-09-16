@@ -652,8 +652,8 @@ func (mc *mysqlConn) readColumns(count int) ([]mysqlField, error) {
 		// EOF Packet
 		if data[0] == iEOF && (len(data) == 5 || len(data) == 1) {
 			if len(data) == 5 {
-				mc.status = readStatus(data[3:])
-				if mc.status&statusPsOutParams != 0 {
+				status := readStatus(data[3:])
+				if status&statusPsOutParams != 0 {
 					mc.psOutParam = true
 				}
 			}
